@@ -28,10 +28,10 @@
 
     <div class="window_on_add">
         <form method="post" action="/add_site">
-            <label for="site-name">Site Name:</label>
-            <input type="text" id="site-name" name="name">
-            <button type="submit">Add Site</button>
-            <button type="button" onclick="close_add()">Cancel</button>
+            <label for="site-name" class="label_name">Enter website domain:</label>
+            <input type="text" id="site-name" name="name" class="input_name">
+            <button type="submit" class="button-form" style="margin-top: 50px;">Add Site</button>
+            <button type="button" onclick="close_add()" class="button-form">Cancel</button>
         </form>
     </div>
 </body>

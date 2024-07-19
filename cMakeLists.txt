@@ -1,0 +1,64 @@
+cmake_minimum_required(VERSION 3.10)
+
+# Set the project name and version
+project(MyProject VERSION 1.0)
+
+# Specify the C++ standard
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
+
+# Include directories
+include_directories(${CMAKE_SOURCE_DIR}/include)
+include_directories(${CMAKE_SOURCE_DIR}/src)
+include_directories(${CMAKE_SOURCE_DIR}/lib)
+include_directories(${CMAKE_SOURCE_DIR}/vcpkgRoot/arm64-osx/include)
+include_directories(/opt/homebrew/opt/boost/include)
+
+# Find the Boost library
+find_package(Boost 1.65.0 REQUIRED)
+
+if(Boost_FOUND)
+    include_directories(${Boost_INCLUDE_DIRS})
+endif()
+
+# Find SQLite3
+find_package(SQLite3 REQUIRED)
+
+if(SQLite3_FOUND)
+    include_directories(${SQLite3_INCLUDE_DIRS})
+endif()
+
+# Add source files
+set(SOURCES
+    firewall.cpp
+    server.cpp
+    firewall.h
+)
+
+# Add the executable
+add_executable(MyProject ${SOURCES})
+
+# Link libraries
+target_link_libraries(MyProject PRIVATE
+    ${SQLite3_LIBRARIES}
+    ${Boost_LIBRARIES}
+)
+
+# Set include paths for the executable
+target_include_directories(MyProject PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/lib
+    ${CMAKE_SOURCE_DIR}/vcpkgRoot/arm64-osx/include
+    /opt/homebrew/opt/boost/include
+)
+
+# Add additional include paths
+include_directories(/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks)
+
+# Set the output directory for the executable
+set_target_properties(MyProject PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+)
+
+# Add any additional configurations or custom commands here

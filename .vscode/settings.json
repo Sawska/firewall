@@ -59,6 +59,12 @@
         "algorithm": "cpp",
         "fstream": "cpp",
         "iomanip": "cpp",
-        "*.ipp": "cpp"
+        "*.ipp": "cpp",
+        "__tree": "cpp",
+        "deque": "cpp",
+        "forward_list": "cpp",
+        "map": "cpp",
+        "span": "cpp",
+        "valarray": "cpp"
     }
 }

@@ -34,9 +34,13 @@ set(SOURCES
     server.cpp
     firewall.h
 )
+set(JSON_INCLUDE_DIR "/opt/homebrew/opt/nlohmann-json/include")
+
+include_directories(${JSON_INCLUDE_DIR} )
 
 # Add the executable
 add_executable(MyProject ${SOURCES})
+
 
 # Link libraries
 target_link_libraries(MyProject PRIVATE

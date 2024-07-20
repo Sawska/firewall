@@ -5,7 +5,6 @@ Firewall::Firewall(const std::string& db_path) {
         std::cerr << "Can't open database: " << sqlite3_errmsg(db) << std::endl;
         return;
     }
-    // Create table if it doesn't exist
     std::string sql = "CREATE TABLE IF NOT EXISTS blocked_sites (id INTEGER PRIMARY KEY, site TEXT UNIQUE);";
     if (sqlite3_exec(db, sql.c_str(), 0, 0, 0) != SQLITE_OK) {
         std::cerr << "Can't create table: " << sqlite3_errmsg(db) << std::endl;
@@ -47,6 +46,8 @@ void Firewall::remove_blocked_site(const std::string& site) {
 }
 
 void Firewall::get_blocked_sites() {
+    blocked_sites.clear();
+
     std::string sql = "SELECT site FROM blocked_sites;";
     sqlite3_stmt* stmt;
     if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, 0) == SQLITE_OK) {

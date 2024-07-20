@@ -6,6 +6,9 @@
 #include <sstream>
 #include "firewall.h"  
 #include <fstream>
+#include <nlohmann/json.hpp> 
+
+using json = nlohmann::json;
 
 using boost::asio::ip::tcp;
 
@@ -15,6 +18,7 @@ public:
     tcp::socket m_socket;
     boost::asio::streambuf m_buffer;
     Firewall& m_firewall;
+    std::string m_body;
 
     session(tcp::socket socket, Firewall& firewall)
         : m_socket(std::move(socket)), m_firewall(firewall) { }
@@ -27,16 +31,68 @@ public:
 
 private:
     void wait_for_request() {
-        auto self(shared_from_this());
+    auto self(shared_from_this());
 
-        boost::asio::async_read_until(m_socket, m_buffer, "\r\n\r\n",
-        [this, self](boost::system::error_code ec, std::size_t length) {
-            if (!ec) {
-                // Process the request and send the response
-                std::istream request_stream(&m_buffer);
-                std::string request_line;
-                std::getline(request_stream, request_line);
+    
+    boost::asio::async_read_until(m_socket, m_buffer, "\r\n\r\n",
+    [this, self](boost::system::error_code ec, std::size_t length) {
+        if (!ec) {
+            std::istream request_stream(&m_buffer);
+            std::string request_line;
+            std::getline(request_stream, request_line);
 
+            
+            std::cout << "Request Line: " << request_line << std::endl;
+
+            
+            std::string header;
+            std::size_t content_length = 0;
+            while (std::getline(request_stream, header) && header != "\r") {
+                if (header.find("Content-Length:") == 0) {
+                    content_length = std::stoul(header.substr(16));
+                }
+                
+                std::cout << "Header: " << header << std::endl;
+            }
+
+            
+            if (content_length > 0) {
+                boost::asio::async_read(m_socket, m_buffer, boost::asio::transfer_exactly(content_length),
+                [this, self, request_line](boost::system::error_code ec, std::size_t length) {
+                    if (!ec) {
+                        std::istream request_stream(&m_buffer);
+                        std::string body;
+                        body.resize(length);
+                        request_stream.read(&body[0], length);
+
+                        
+                        std::cout << "Body: " << body << std::endl;
+
+                        
+                        std::istringstream request_line_stream(request_line);
+                        std::string method;
+                        std::string uri;
+                        std::string http_version;
+                        request_line_stream >> method >> uri >> http_version;
+
+                        std::cout << "Request: " << method << " " << uri << " " << http_version << std::endl;
+
+                        if (routes.find(uri) != routes.end()) {
+                            
+                            m_body = body;
+                            routes[uri](*this);
+                        } else {
+                            send_not_found();
+                        }
+
+                        m_buffer.consume(m_buffer.size());  
+                        wait_for_request();
+                    } else {
+                        std::cout << "Error: " << ec.message() << std::endl;
+                    }
+                });
+            } else {
+                
                 std::istringstream request_line_stream(request_line);
                 std::string method;
                 std::string uri;
@@ -51,14 +107,19 @@ private:
                     send_not_found();
                 }
 
-                // Clear the buffer and wait for the next request
-                m_buffer.consume(length);
+                m_buffer.consume(m_buffer.size()); 
                 wait_for_request();
-            } else {
-                std::cout << "Error: " << ec.message() << std::endl;
             }
-        });
-    }
+        } else {
+            std::cout << "Error: " << ec.message() << std::endl;
+        }
+    });
+}
+
+
+
+
+
 
     void send_not_found() {
         auto self(shared_from_this());
@@ -133,49 +194,69 @@ void handle_root(session& sess) {
     });
 }
 
+
 void add_site(session& sess) {
+    
     std::istream request_stream(&sess.m_buffer);
     std::string request_line;
-    std::getline(request_stream, request_line); 
+    std::getline(request_stream, request_line);
 
-    
+
+    std::cout << "Request Line: " << request_line << std::endl;
+
     std::string header;
     while (std::getline(request_stream, header) && header != "\r") {
-    
+        
     }
 
     
-    std::string body;
-    std::getline(request_stream, body);
+    std::string body = sess.m_body;
 
     
-    std::string site;
-    if (body.find("name=") != std::string::npos) {
-        site = body.substr(body.find("name=") + 5);
-        if (site.find('&') != std::string::npos) {
-            site = site.substr(0, site.find('&'));
-        }
+    std::cout << "Body: " << body << std::endl;
+
+    try {
+        std::string site = body.substr(body.find("=")+1);
+
+        
+        sess.m_firewall.add_blocked_site(site);
+
+        
+        std::string html_content = read_file("./main.html");
+        const std::string response =
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Length: " + std::to_string(html_content.size()) + "\r\n"
+            "Content-Type: text/html\r\n"
+            "\r\n" + html_content;
+
+        boost::asio::async_write(sess.m_socket, boost::asio::buffer(response),
+        [&sess](boost::system::error_code ec, std::size_t) {
+            if (ec) {
+                std::cout << "Error: " << ec.message() << std::endl;
+            }
+        });
+    } catch (const json::exception& e) {
+        std::cout << "JSON Error: " << e.what() << std::endl;
+
+        
+        const std::string response =
+            "HTTP/1.1 400 Bad Request\r\n"
+            "Content-Length: 15\r\n"
+            "Content-Type: text/plain\r\n"
+            "\r\n"
+            "Invalid JSON";
+
+        boost::asio::async_write(sess.m_socket, boost::asio::buffer(response),
+        [&sess](boost::system::error_code ec, std::size_t) {
+            if (ec) {
+                std::cout << "Error: " << ec.message() << std::endl;
+            }
+        });
     }
-
-
-    sess.m_firewall.add_blocked_site(site);
-
-    
-    std::string html_content = read_file("./main.html");
-    const std::string response =
-        "HTTP/1.1 200 OK\r\n"
-        "Content-Length: " + std::to_string(html_content.size()) + "\r\n"
-        "Content-Type: text/html\r\n"
-        "\r\n" +
-        html_content;
-
-    boost::asio::async_write(sess.m_socket, boost::asio::buffer(response),
-    [&sess](boost::system::error_code ec, std::size_t ) {
-        if (ec) {
-            std::cout << "Error: " << ec.message() << std::endl;
-        }
-    });
 }
+
+
+
 
 
 
@@ -219,15 +300,9 @@ void remove_site(session& sess) {
     std::istream request_stream(&sess.m_buffer);
     std::string request_line;
     std::getline(request_stream, request_line);  
-    std::string body;
-    std::getline(request_stream, body);  
-
+    std::string body = sess.m_body;
+    std::string site = body.substr(body.find("=")+1);
     
-    std::string site;
-    if (body.find("\"site\":\"") != std::string::npos) {
-        site = body.substr(body.find("\"site\":\"") + 7);
-        site = site.substr(0, site.find("\""));
-    }
 
     sess.m_firewall.remove_blocked_site(site);
 
@@ -252,7 +327,6 @@ void get_sites(session& sess) {
     for (const auto& site : sess.m_firewall.blocked_sites) {
         sites_list += "\"" + site + "\",";
     }
-    // Remove the trailing comma
     if (!sites_list.empty()) {
         sites_list.pop_back();
     }

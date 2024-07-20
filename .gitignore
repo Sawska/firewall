@@ -1,2 +1,5 @@
 /build
-.vscode
+c_cpp_properties.json
+.vscode/
+launch_json
+settings.json

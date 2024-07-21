@@ -55,6 +55,18 @@ private:
                 std::cout << "Header: " << header << std::endl;
             }
 
+             std::string host;
+            while (std::getline(request_stream, header) && header != "\r") {
+                if (header.find("Host:") == 0) {
+                    host = header.substr(6);
+                }
+            }
+            if (is_host_blocked(host)) {
+                std::cout << "Connection blocked for host: " << host << std::endl;
+                send_not_found();
+                return;
+            }
+
             
             if (content_length > 0) {
                 boost::asio::async_read(m_socket, m_buffer, boost::asio::transfer_exactly(content_length),
@@ -116,6 +128,10 @@ private:
     });
 }
 
+bool is_host_blocked(const std::string& host) const {
+    return m_firewall.search_if_blocked(host);
+}
+
 
 
 
@@ -151,13 +167,15 @@ public:
     }
 
 private:
-    void do_accept() {
+     void do_accept() {
         m_acceptor.async_accept([this](boost::system::error_code ec, tcp::socket socket) {
             if (!ec) {
-                std::cout << "Creating session on: "
-                          << socket.remote_endpoint().address().to_string()
-                          << ":" << socket.remote_endpoint().port() << '\n';
-                std::make_shared<session>(std::move(socket), m_firewall)->run();
+                std::string remote_address = socket.remote_endpoint().address().to_string();
+                m_firewall.get_blocked_sites();
+                    std::cout << "Creating session on: "
+                              << socket.remote_endpoint().address().to_string()
+                              << ":" << socket.remote_endpoint().port() << '\n';
+                    std::make_shared<session>(std::move(socket), m_firewall)->run();
             } else {
                 std::cout << "Error: " << ec.message() << std::endl;
             }
@@ -168,7 +186,6 @@ private:
 
     tcp::acceptor m_acceptor;
 };
-
 std::string read_file(const std::string& file_path) {
     std::ifstream file(file_path);
     std::stringstream buffer;

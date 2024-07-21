@@ -14,7 +14,7 @@ public:
 
     Firewall(const std::string& db_path);
     ~Firewall();
-
+    bool search_if_blocked(const std::string& name);
     void add_blocked_site(const std::string& site);
     void remove_blocked_site(const std::string& site);
     void get_blocked_sites();

@@ -31,6 +31,15 @@ void Firewall::add_blocked_site(const std::string& site) {
     }
 }
 
+bool Firewall::search_if_blocked(const std::string& name) {
+    for (const auto& site : blocked_sites) {
+        if (site.find(name) != std::string::npos) {  
+            return true;
+        }
+    }
+    return false;
+}
+
 void Firewall::remove_blocked_site(const std::string& site) {
     std::string sql = "DELETE FROM blocked_sites WHERE site = ?;";
     sqlite3_stmt* stmt;

@@ -13,6 +13,7 @@ include_directories(${CMAKE_SOURCE_DIR}/src)
 include_directories(${CMAKE_SOURCE_DIR}/lib)
 include_directories(${CMAKE_SOURCE_DIR}/vcpkgRoot/arm64-osx/include)
 include_directories(/opt/homebrew/opt/boost/include)
+include_directories(/opt/homebrew/opt/libpcap/include)
 
 # Find the Boost library
 find_package(Boost 1.65.0 REQUIRED)
@@ -28,24 +29,27 @@ if(SQLite3_FOUND)
     include_directories(${SQLite3_INCLUDE_DIRS})
 endif()
 
+# Find libpcap
+find_library(PCAP_LIBRARY pcap REQUIRED)
+
+set(JSON_INCLUDE_DIR "/opt/homebrew/opt/nlohmann-json/include")
+include_directories(${JSON_INCLUDE_DIR} )
+
 # Add source files
 set(SOURCES
     firewall.cpp
     server.cpp
     firewall.h
 )
-set(JSON_INCLUDE_DIR "/opt/homebrew/opt/nlohmann-json/include")
-
-include_directories(${JSON_INCLUDE_DIR} )
 
 # Add the executable
 add_executable(MyProject ${SOURCES})
-
 
 # Link libraries
 target_link_libraries(MyProject PRIVATE
     ${SQLite3_LIBRARIES}
     ${Boost_LIBRARIES}
+    ${PCAP_LIBRARY}
 )
 
 # Set include paths for the executable

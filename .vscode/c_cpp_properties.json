@@ -6,7 +6,8 @@
                 "${workspaceFolder}/**",
                 "${vcpkgRoot}/arm64-osx/include",
                 "/opt/homebrew/opt/boost/include",
-                "/opt/homebrew/opt/nlohmann-json/include"
+                "/opt/homebrew/opt/nlohmann-json/include",
+                "/opt/homebrew/opt/libpcap/include"
             ],
             "defines": [],
             "macFrameworkPath": [

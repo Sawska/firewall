@@ -61,13 +61,6 @@ private:
                     host = header.substr(6);
                 }
             }
-            if (is_host_blocked(host)) {
-                std::cout << "Connection blocked for host: " << host << std::endl;
-                send_not_found();
-                return;
-            }
-
-            
             if (content_length > 0) {
                 boost::asio::async_read(m_socket, m_buffer, boost::asio::transfer_exactly(content_length),
                 [this, self, request_line](boost::system::error_code ec, std::size_t length) {
@@ -126,10 +119,6 @@ private:
             std::cout << "Error: " << ec.message() << std::endl;
         }
     });
-}
-
-bool is_host_blocked(const std::string& host) const {
-    return m_firewall.search_if_blocked(host);
 }
 
 
@@ -369,6 +358,7 @@ int main() {
         boost::asio::io_context io_context;
         Firewall firewall("blocked_sites.db");
 
+
         session::routes["/"] = handle_root;
         session::routes["/add_site"] = add_site;
         session::routes["/remove_site"] = remove_site;
@@ -376,11 +366,22 @@ int main() {
         session::routes["/styles.css"] = handle_css;
         session::routes["/script.js"] = handle_js;
 
-        server s(io_context, 8080, firewall);
+        server s(io_context, 8080, firewall); 
+
+
+        std::thread packet_capture_thread([&firewall]() {
+            firewall.start_packet_capture("en0"); 
+        });
+
+        
         io_context.run();
-    } catch (std::exception& e) {
+
+        
+        if (packet_capture_thread.joinable()) {
+            packet_capture_thread.join();
+        }
+    } catch (const std::exception& e) {
         std::cerr << "Exception: " << e.what() << "\n";
     }
-
     return 0;
 }

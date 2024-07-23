@@ -6,20 +6,27 @@
 #include <string>
 #include <sqlite3.h>
 #include <pcap.h>
+#include <unordered_map>
+using namespace std;
 
 class Firewall {
 public:
     std::vector<std::string> blocked_sites;
-    std::vector<int> blocked_protocols; // Store blocked protocols
+    std::vector<int> blocked_protocols;
+    unordered_map<int,int> map;
     sqlite3 *db;
 
     Firewall(const std::string& db_path);
     ~Firewall();
-    bool search_if_blocked(const std::string& name);
+    bool search_if_blocked(const std::string& packet_data);
     void add_blocked_site(const std::string& site);
     void remove_blocked_site(const std::string& site);
     void get_blocked_sites();
     void add_blocked_protocol(int protocol);
+    void add_blocked_range(int start,int end);
+    void remove_blocked_range(int start,int end);
+    bool is_ip_blocked_in_range(int ip);
+    void get_blocked_range();
     void remove_blocked_protocol(int protocol);
     void get_blocked_protocols();
     void start_packet_capture(const std::string& interface);
